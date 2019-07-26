@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from spknn import *
+from adaptiveknn import *
 
 class Test_spincom(unittest.TestCase):
 

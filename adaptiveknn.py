@@ -72,18 +72,20 @@ def generalizek_spincom(X, y, m, h, sigma):
     return g
 
 
-
-def fitk_adaknn(X, y, idx, alpha):
-    y0 = y[idx]
-    Xsorted, ysorted = get_neighborhood(X, y, idx)
-
-    Krand = np.random.choice(np.arange(len(Xsorted)), alpha)
+def choose_k_from_random_subset(Krand, ysorted, y0):
     error_min = np.Inf
-
     for k in Krand:
         error = np.mean(ysorted[:k]) - y0
         if error < error_min:
             error_min = error
             kbest = k
 
+    return kbest
+
+
+def fitk_adaknn(X, y, idx, alpha, kmax):
+    y0 = y[idx]
+    Xsorted, ysorted = get_neighborhood(X, y, idx)
+    Krand = np.random.choice(np.arange(kmax), alpha)
+    kbest = choose_k_from_random_subset(Krand, ysorted, y0)
     return kbest
