@@ -70,3 +70,20 @@ def generalizek_spincom(X, y, m, h, sigma):
         add_most_novel_training_datum(g, X, y, ridx)
 
     return g
+
+
+
+def fitk_adaknn(X, y, idx, alpha):
+    y0 = y[idx]
+    Xsorted, ysorted = get_neighborhood(X, y, idx)
+
+    Krand = np.random.choice(np.arange(len(Xsorted)), alpha)
+    error_min = np.Inf
+
+    for k in Krand:
+        error = np.mean(ysorted[:k]) - y0
+        if error < error_min:
+            error_min = error
+            kbest = k
+
+    return kbest
