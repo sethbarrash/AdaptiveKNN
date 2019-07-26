@@ -55,14 +55,18 @@ def initialize_k_generalization(X, y, h, sigma):
     return g, ridx
 
 
+def add_most_novel_training_datum(g, X, y, ridx):
+    gamma = g.novelty(X, ridx)
+    idxnew = np.argmin(gamma)
+    knew = fitk_spincom(X, y, idxnew)
+    g.update(X[idxnew], knew)
+    idx_ = np.searchsorted(ridx, idxnew)
+    ridx = np.delete(ridx, idx_)
+
+
 def generalizek_spincom(X, y, m, h, sigma):
     g, ridx = initialize_k_generalization(X, y, h, sigma)
     for _ in range(2, m):
-        gamma = sgp.novelty(X, ridx)
-        idxnew = np.argmin(gamma)
-        knew = fitk_spincom(X, y, idxnew)
-        g.update(X[idxnew], knew)
-        idx_ = np.searchsorted(ridx, idxnew)
-        ridx = np.delete(ridx, idx_)
+        add_most_novel_training_datum(g, X, y, ridx)
 
     return g
