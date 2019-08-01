@@ -1,6 +1,9 @@
 import unittest
 import numpy as np
+import SparseGP as sgp
 from adaptiveknn import *
+
+from sklearn.gaussian_process.kernels import RBF
 
 class Test_spincom(unittest.TestCase):
 
@@ -45,6 +48,14 @@ class Test_spincom(unittest.TestCase):
 
         e = calculate_neighbor_errors(ysorted, y0)
         np.testing.assert_array_equal(e, etrue)
+
+
+
+
+
+
+
+
 
 class TestUtilities(unittest.TestCase):
 

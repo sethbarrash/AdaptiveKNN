@@ -127,15 +127,21 @@ def atleast_2d_T(X):
 ## Train/test
 ###############################################################################
 
-def knnTrainTest(X, y, xi, yi, ki):
+def knnTrainTest(X, y, Xtest, ytest, ki):
     knr  = KNeighborsRegressor(n_neighbors = ki, algorithm = "brute")
+    t0 = datetime.now()
     knr.fit(X, y)
+    t1 = datetime.now()
     ## If this receives multiple one-dimensional testing data, it will 
     ## misinterpret them as a single, multi-dimensional datum
-    yhat = knr.predict( np.atleast_2d(xi) )[0]
-    error = yhat - yi
+    yhat = knr.predict( np.atleast_2d(Xtest) )[0]
+    error = yhat - ytest
+    t2 = datetime.now()
 
-    return error
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return error, trainTime, testTime
 
 
 def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
@@ -157,7 +163,11 @@ def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
         ki = chisel_k(ki, n)
         ktest[i] = ki
 
-        errors[i] = knnTrainTest(X, y, xi, ytest[i], ki)
+        error = knnTrainTest(X, y, xi, ytest[i], ki)
+        try:
+            errors[i] = error[0]
+        except(IndexError):
+            errors[i] = error
 
     t2 = datetime.now()
 
@@ -186,7 +196,47 @@ def adaknnTrainTest(X, y, Xtest, ytest, hyperparams):
         ki = chisel_k(ki, n)
         ktest[i] = ki
 
-        errors[i] = knnTrainTest(X, y, xi, ytest[i], ki)
+        error = knnTrainTest(X, y, xi, ytest[i], ki)
+        try:
+            errors[i] = error[0]
+        except(IndexError):
+            errors[i] = error
+
+    t2 = datetime.now()
+
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return ktest, errors, trainTime, testTime
+
+
+
+
+def ktreeTrainTest(X, y, Xtest, ytest, hyperparams):
+    t0 = datetime.now()
+
+    lz = lrn.IKNNzhang(np.atleast_2d(X), y, rho1, rho2, k, sigma)
+    ktrain = lz.Ktrain
+    dtc = DecisionTreeClassifier()
+    dtc.fit(np.atleast_2d(X), ktrain)
+
+    t1 = datetime.now()
+
+    ktest  = dtc.predict(np.atleast_2d(Xtest))
+    ktest = int(ktest)
+    if ktest < 1: ktest = 1
+    if ktest > n: ktest = n
+
+    errors = np.zeros_like(ytest)
+    for i in range(len(ytest)):
+        xi = Xtest[i]
+        ki = ktest[i]
+
+        error = knnTrainTest(X, y, xi, ytest[i], ki)
+        try:
+            errors[i] = error[0]
+        except(IndexError):
+            errors[i] = error
 
     t2 = datetime.now()
 
@@ -210,4 +260,4 @@ def adaknnTrainTest(X, y, Xtest, ytest, hyperparams):
 def optimize_k(Xtrain, ytrain, Xvalid, yvalid, ks):
     validation_results = pd.DataFrame(index = ks, {"error" : np.nan})
     for k in ks:
-        knnTrainTest(Xtrain, ytrain, Xvalid)
+        knnTrainTest(Xtrain, ytrain, Xvalid, yvalid, k)

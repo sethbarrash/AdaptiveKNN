@@ -1,5 +1,10 @@
 import numpy as np
 
+## Three challenges to vectorization:
+## 1. Inputs to kernels must be 2d
+## 2. KBinv must be initialized properly
+## 3. Overflow errors must be anticipated
+
 
 class SparseGP:
 
@@ -19,10 +24,19 @@ class SparseGP:
 
 
     def k(self, x):
-        k = np.zeros((self.t,))
-        for i in range(self.t):
-            k[i] = self.K0(self.x[i], x)
-        return k
+        x_length = len(x)
+        if x_length == 1:
+            k = np.zeros((self.t,))
+            for i in range(self.t):
+                k[i] = self.K0(self.x[i], x)
+            return k
+        else :
+            k = np.zeros((self.t, x_length))
+            for i in range(self.t):
+                for j in range(x_length):
+                    k[i, j] = self.K0(self.x[i], x[j])
+            return k
+
 
 
     def a(self, x):
