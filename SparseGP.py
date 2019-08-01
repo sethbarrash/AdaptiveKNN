@@ -15,7 +15,7 @@ class SparseGP:
 
 
     def K0(self, x0, x1):
-        return np.exp(- (x1 - x0) ** 2 / self.r)
+        return np.exp(- np.sum((x1 - x0) ** 2) / self.r)
 
 
     def k(self, x):
@@ -41,7 +41,12 @@ class SparseGP:
         gamma_idx = 0
 
         for l in ridx:
-            gamma[gamma_idx] = self.novelty_individual(X[l])
+            try:
+                gamma[gamma_idx] = self.novelty_individual(X[l])
+            except(OverflowError):
+                gamma = np.zeros_like(ridx)
+                gamma[gamma_idx] = 1.
+                return gamma
             gamma_idx += 1
 
         return gamma

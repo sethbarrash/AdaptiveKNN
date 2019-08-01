@@ -46,3 +46,55 @@ class Test_spincom(unittest.TestCase):
         e = calculate_neighbor_errors(ysorted, y0)
         np.testing.assert_array_equal(e, etrue)
 
+class TestUtilities(unittest.TestCase):
+
+    def test_atleast_2d_T_0(self):
+        x = 5
+        x = atleast_2d_T(x)
+        xtrue = np.array([[5]])
+        np.testing.assert_array_equal(x, xtrue)
+
+    def test_atleast_2d_T_1(self):
+        x = np.array([1, 2])
+        x = atleast_2d_T(x)
+        xtrue = np.array([[1],
+                          [2]])
+        np.testing.assert_array_equal(x, xtrue)
+
+    def test_atleast_2d_T_2(self):
+        x = np.array([[1],
+                      [2]])
+        xtrue = np.array([[1],
+                          [2]])
+        x = atleast_2d_T(x)
+        np.testing.assert_array_equal(x, xtrue)
+
+    def test_atleast_2d_T_3(self):
+        x = np.array([[1, 2],
+                      [2, 3]])
+        xtrue = np.array([[1, 2],
+                           [2, 3]])
+        x = atleast_2d_T(x)
+        np.testing.assert_array_equal(x, xtrue)
+
+
+    def test_chisel_k_0(self):
+        n = 100
+        k = 0
+        k = chisel_k(k, n)
+        ktrue = 1
+        self.assertEqual(k, ktrue)
+
+    def test_chisel_k_1(self):
+        n = 100
+        k = 1.75
+        k = chisel_k(k, n)
+        ktrue = 1
+        self.assertEqual(k, ktrue)
+
+    def test_chisel_k_2(self):
+        n = 100
+        k = 110
+        k = chisel_k(k, n)
+        ktrue = 100
+        self.assertEqual(k, ktrue)

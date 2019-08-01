@@ -1,6 +1,10 @@
 import numpy as np
 import SparseGP as sgp
 
+from datetime import datetime
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neural_network import MLPRegressor
+
 def get_neighbor_order(X, y, idx):
     x0 = X[idx]
     if len(X.shape) == 1 : xdist = np.abs(X - x0)
@@ -64,6 +68,18 @@ def add_most_novel_training_datum(g, X, y, ridx):
     ridx = np.delete(ridx, idx_)
 
 
+def generalizek_adaknn(X, y, alpha, kmax):
+    ktrain = np.zeros_like(y)
+    for i in range(len(X)):
+        ktrain[i] = fitk_adaknn(X, y, i, alpha, kmax)
+
+    X = atleast_2d_T(X)
+    mlp = MLPRegressor([15])
+    mlp.fit(X, ktrain)
+
+    return mlp
+
+
 def generalizek_spincom(X, y, m, h, sigma):
     g, ridx = initialize_k_generalization(X, y, h, sigma)
     for _ in range(2, m):
@@ -89,3 +105,109 @@ def fitk_adaknn(X, y, idx, alpha, kmax):
     Krand = np.random.choice(np.arange(kmax), alpha)
     kbest = choose_k_from_random_subset(Krand, ysorted, y0)
     return kbest
+
+
+def chisel_k(ki, n):
+    k = int(ki)
+    if k < 1 : k = 1
+    if k > n : k = n
+
+    return k
+
+
+def atleast_2d_T(X):
+    try:
+        if len(X.shape) == 1: return np.expand_dims(X, 1)
+        else : return X
+    except(AttributeError):
+        return np.atleast_2d(X)
+
+
+###############################################################################
+## Train/test
+###############################################################################
+
+def knnTrainTest(X, y, xi, yi, ki):
+    knr  = KNeighborsRegressor(n_neighbors = ki, algorithm = "brute")
+    knr.fit(X, y)
+    ## If this receives multiple one-dimensional testing data, it will 
+    ## misinterpret them as a single, multi-dimensional datum
+    yhat = knr.predict( np.atleast_2d(xi) )[0]
+    error = yhat - yi
+
+    return error
+
+
+def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
+    t0 = datetime.now()
+
+    m, h, sigma = hyperparams.values()
+    g = generalizek_spincom(X, y, m, h, sigma)
+
+    t1 = datetime.now()
+
+    n = len(X)
+    X = atleast_2d_T(X)
+
+    ktest  = np.zeros_like(y)
+    errors = np.zeros_like(y)
+    for i in range(len(y)):
+        xi = Xtest[i]
+        ki = g.a(xi)
+        ki = chisel_k(ki, n)
+        ktest[i] = ki
+
+        errors[i] = knnTrainTest(X, y, xi, ytest[i], ki)
+
+    t2 = datetime.now()
+
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return ktest, errors, trainTime, testTime
+
+
+def adaknnTrainTest(X, y, Xtest, ytest, hyperparams):
+    t0 = datetime.now()
+
+    alpha, kmax = hyperparams.values()
+    g = generalizek_adaknn(X, y, alpha, kmax)
+
+    t1 = datetime.now()
+
+    n = len(X)
+    X = atleast_2d_T(X)
+
+    ktest  = np.zeros_like(y)
+    errors = np.zeros_like(y)
+    for i in range(len(y)):
+        xi = Xtest[i]
+        ki = g.predict(np.atleast_2d(xi))
+        ki = chisel_k(ki, n)
+        ktest[i] = ki
+
+        errors[i] = knnTrainTest(X, y, xi, ytest[i], ki)
+
+    t2 = datetime.now()
+
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return ktest, errors, trainTime, testTime
+
+
+
+
+
+
+
+
+
+###############################################################################
+## Optimize hyperparameters
+###############################################################################
+
+def optimize_k(Xtrain, ytrain, Xvalid, yvalid, ks):
+    validation_results = pd.DataFrame(index = ks, {"error" : np.nan})
+    for k in ks:
+        knnTrainTest(Xtrain, ytrain, Xvalid)
