@@ -4,6 +4,7 @@ from scipy import optimize as opt
 from scipy import stats
 from scipy.sparse import csgraph
 from sklearn.neighbors import NearestNeighbors
+from sklearn.gaussian_process import kernels
 from datetime import datetime
 
 ## Functions for laplacians
@@ -45,18 +46,10 @@ def computeLaplacianLocal(X, y, k):
 
 def laplacianZhang(X, k, sigma):
     D = X.shape[1]
-    Sfull = np.empty((D, D))
     S = np.zeros((D, D))
 
-    # Calculate the heat kernels between all feature vectors
-    for i in range(D):
-        Sfull[i, i] = 1.
-        for j in range(i + 1, D):
-            xi = X[:, i]
-            xj = X[:, j]
-            kij = np.exp( -1. * np.sum((xi - xj) ** 2) / (2 * sigma) )
-            Sfull[i, j] = kij
-            Sfull[j, i] = kij
+    K = kernels.RBF(2 * sigma)
+    Sfull = K(X.T, X.T)
 
     # Get rid of all but the k largest elements in each row
     for i in range(D):
@@ -67,7 +60,7 @@ def laplacianZhang(X, k, sigma):
     S = 0.5 * (S + S.T)
 
     D = np.diag(np.sum(S, axis = 0))
-    
+
     return D - S
 
 
