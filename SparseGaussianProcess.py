@@ -9,14 +9,14 @@ from sklearn.gaussian_process.kernels import RBF
 
 class SparseGaussianProcess:
 
-    def __init__(self, x0, y0, r, noise):
+    def __init__(self, x0, y0, h, noise):
         self._alpha = np.atleast_2d(y0 / noise)
         self._C     = np.atleast_2d(-1./ noise)
         self._KB    = np.zeros((1, 1))
         self._Q     = np.ones((1, 1))
         self.x      = np.atleast_2d(x0)
         self.noise  = noise
-        self.kernel = RBF(r)
+        self.kernel = RBF(h)
         self.t      = 1
 
 

@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from efficient import *
+import ktree
 
 class TestZhang(unittest.TestCase):
 
@@ -20,6 +20,6 @@ class TestZhang(unittest.TestCase):
         k = 5
         sigma = 0.001
 
-        W = optimize_efficient(X, rho1, rho2, k, sigma)
-        valid = check_optimality_efficient(W, X, rho1, rho2, k, sigma)
+        W = ktree.optimize(X, rho1, rho2, k, sigma)
+        valid = ktree.check_optimality(W, X, rho1, rho2, k, sigma)
         self.assertTrue(valid)

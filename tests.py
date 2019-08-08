@@ -169,8 +169,36 @@ class Test_spincom(unittest.TestCase):
         np.testing.assert_array_equal(e, etrue)
 
 
+    def test_candidate_subset_0(self):
+        np.random.seed(55455)
+        X    = np.random.normal(0, 1, (10, 2))
+        ridx = np.array([2, 3, 5, 7])
+        r    = 6
 
-class TestTrainTest(unittest.TestCase):
+        Xr = candidate_subset(X, ridx, r)
+        np.testing.assert_array_equal(Xr, X[ridx, :])
+
+
+    def test_candidate_subset_1(self):
+        np.random.seed(55455)
+        X    = np.random.normal(0, 1, (10, 2))
+        ridx = np.array([2, 3, 5, 7])
+        r    = 2
+
+        Xr = candidate_subset(X, ridx, r)
+        self.assertTrue(Xr.shape == (2, 2))
+
+
+    def test_update_inactive_subset(self):
+        ridx = np.array([2, 3, 5, 7])
+        idx = 5
+
+        ridx = update_inactive_set(ridx, idx)
+        np.testing.assert_array_equal(ridx, np.array([2, 3, 7]))
+
+
+#@unittest.skip("Computationally expensive tests")
+class Test_TrainTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
@@ -179,89 +207,80 @@ class TestTrainTest(unittest.TestCase):
         self.ytrain = np.random.normal(0, 1, (50,))
         self.Xtest  = np.random.normal(0, 1, (10, 5))
         self.ytest  = np.random.normal(0, 1, (10,))
+        self.n = len(self.Xtrain)
 
     def test_knnTrainTest(self):
-        np.random.seed(55455)
-        Xtrain = np.random.normal(0, 1, (50, 5))
-        ytrain = np.random.normal(0, 1, (50,))
-        Xtest  = np.random.normal(0, 1, (10, 5))
-        ytest  = np.random.normal(0, 1, (10,))
+        errors, normalized_errors, trainTime, testTime = \
+            knnTrainTest(self.Xtrain, self.ytrain, self.Xtest, self.ytest, 1)
 
-        errors, trainTime, testTime = knnTrainTest(Xtrain, ytrain, Xtest, ytest, 1)
-
-        self.assertEqual(len(errors), len(ytest))
+        self.assertEqual(len(errors), len(self.ytest))
         self.assertLess(len(errors.squeeze().shape), 2)
         self.assertFalse(np.any(np.isnan(errors)))
+        self.assertEqual(len(normalized_errors), len(self.ytest))
+        self.assertLess(len(normalized_errors.squeeze().shape), 2)
+        self.assertFalse(np.any(np.isnan(normalized_errors)))
         self.assertGreater(trainTime, 0)
         self.assertGreater(testTime,  0)
 
 
     def test_spincomTrainTest(self):
-        np.random.seed(55455)
-        n = 50
-        Xtrain = np.random.normal(0, 1, (n, 5))
-        ytrain = np.random.normal(0, 1, (n,))
-        Xtest  = np.random.normal(0, 1, (10, 5))
-        ytest  = np.random.normal(0, 1, (10,))
+        hyperparams = {"m" : 20, "r" : 20, "h" : 1., "sigma" : 4.}
+        errors, normalized_errors, ktest, trainTime, testTime = \
+            spincomTrainTest(self.Xtrain, self.ytrain, self.Xtest, self.ytest, hyperparams)
 
-        hyperparams = {"m" : 20, "h" : 1., "sigma" : 4.}
-        errors, ktest, trainTime, testTime = spincomTrainTest(Xtrain, ytrain, Xtest, ytest, hyperparams)
-
-        self.assertEqual(len(errors), len(ytest))
+        self.assertEqual(len(errors), len(self.ytest))
         self.assertLess(len(errors.squeeze().shape), 2)
         self.assertFalse(np.any(np.isnan(errors)))
-        self.assertEqual(len(ktest), len(ytest))
+        self.assertEqual(len(normalized_errors), len(self.ytest))
+        self.assertLess(len(normalized_errors.squeeze().shape), 2)
+        self.assertFalse(np.any(np.isnan(normalized_errors)))
+        self.assertEqual(len(ktest), len(self.ytest))
         self.assertFalse(np.any(np.isnan(ktest)))
-        self.assertFalse(np.any(np.logical_or(ktest > n, ktest < 1)))
+        self.assertFalse(np.any(np.logical_or(ktest > self.n, ktest < 1)))
         self.assertTrue(np.issubdtype(ktest.dtype, np.integer))
         self.assertGreater(trainTime, 0)
         self.assertGreater(testTime,  0)
 
     def test_adaknnTrainTest(self):
-        np.random.seed(55455)
-        n = 50
-        Xtrain = np.random.normal(0, 1, (n, 5))
-        ytrain = np.random.normal(0, 1, (n,))
-        Xtest  = np.random.normal(0, 1, (10, 5))
-        ytest  = np.random.normal(0, 1, (10,))
-
         hyperparams = {"alpha" : 10, "kmax" : 25}
-        errors, ktest, trainTime, testTime = adaknnTrainTest(Xtrain, ytrain, Xtest, ytest, hyperparams)
+        errors, normalized_errors, ktest, trainTime, testTime = \
+            adaknnTrainTest(self.Xtrain, self.ytrain, self.Xtest, self.ytest, hyperparams)
 
-        self.assertEqual(len(errors), len(ytest))
+        self.assertEqual(len(errors), len(self.ytest))
         self.assertLess(len(errors.squeeze().shape), 2)
         self.assertFalse(np.any(np.isnan(errors)))
-        self.assertEqual(len(ktest), len(ytest))
+        self.assertEqual(len(normalized_errors), len(self.ytest))
+        self.assertLess(len(normalized_errors.squeeze().shape), 2)
+        self.assertFalse(np.any(np.isnan(normalized_errors)))
+        self.assertEqual(len(ktest), len(self.ytest))
         self.assertFalse(np.any(np.isnan(ktest)))
-        self.assertFalse(np.any(np.logical_or(ktest > n, ktest < 1)))
+        self.assertFalse(np.any(np.logical_or(ktest > self.n, ktest < 1)))
         self.assertTrue(np.issubdtype(ktest.dtype, np.integer))
         self.assertGreater(trainTime, 0)
         self.assertGreater(testTime,  0)
 
+    #@unittest.skip("Computationally expensive test")
     def test_ktreeTrainTest(self):
-        np.random.seed(55455)
-        n = 50
-        Xtrain = np.random.normal(0, 1, (n, 5))
-        ytrain = np.random.normal(0, 1, (n,))
-        Xtest  = np.random.normal(0, 1, (10, 5))
-        ytest  = np.random.normal(0, 1, (10,))
-
         hyperparams = {"rho1" : 1e-5, "rho2" : 1e-5, "k" : 5, "sigma" : 1e-5}
-        errors, ktest, trainTime, testTime = ktreeTrainTest(Xtrain, ytrain, Xtest, ytest, hyperparams)
+        errors, normalized_errors, ktest, trainTime, testTime = \
+            ktreeTrainTest(self.Xtrain, self.ytrain, self.Xtest, self.ytest, hyperparams)
 
-        self.assertEqual(len(errors), len(ytest))
+        self.assertEqual(len(errors), len(self.ytest))
         self.assertLess(len(errors.squeeze().shape), 2)
         self.assertFalse(np.any(np.isnan(errors)))
-        self.assertEqual(len(ktest), len(ytest))
+        self.assertEqual(len(normalized_errors), len(self.ytest))
+        self.assertLess(len(normalized_errors.squeeze().shape), 2)
+        self.assertFalse(np.any(np.isnan(normalized_errors)))
+        self.assertEqual(len(ktest), len(self.ytest))
         self.assertFalse(np.any(np.isnan(ktest)))
-        self.assertFalse(np.any(np.logical_or(ktest > n, ktest < 1)))
+        self.assertFalse(np.any(np.logical_or(ktest > self.n, ktest < 1)))
         self.assertTrue(np.issubdtype(ktest.dtype, np.integer))
         self.assertGreater(trainTime, 0)
         self.assertGreater(testTime,  0)
 
 
 
-@unittest.skip("Computationally expensive tests")
+#@unittest.skip("Computationally expensive tests")
 class TestOptimizeHyperparameters(unittest.TestCase):
 
     @classmethod
@@ -299,11 +318,12 @@ class TestOptimizeHyperparameters(unittest.TestCase):
             self.assertLessEqual(pair[0], pair[1])
 
     def test_optimize_sigma(self):
-        h = 1.
         m = 20
+        r = 20
+        h = 1.
         sigmas = np.power(2., np.arange(5))
         sigma = optimize_sigma(self.Xtrain, self.ytrain, self.Xtest, self.ytest,
-            sigmas, m, h)[0]
+            sigmas, m, r, h)[0]
         self.assertIn(sigma, sigmas)
 
     def test_optimize_hyperparams_adaknn(self):
@@ -314,6 +334,7 @@ class TestOptimizeHyperparameters(unittest.TestCase):
         self.assertIn(alpha, alphas)
         self.assertIn(kmax, kmaxs)
 
+    @unittest.skip("Computationally expensive test")
     def test_optimize_hyperparams_ktree(self):
         rhos1  = np.power(10., np.arange(-5, -2))
         rhos2  = np.power(10., np.arange(-5, -2))
@@ -387,9 +408,8 @@ class TestUtilities(unittest.TestCase):
         ktrue = 100
         self.assertEqual(k, ktrue)
 
-
-
-class Test_real_data_tests(unittest.TestCase):
+#@unittest.skip("Computationally expensive tests")
+class Test_real_data_trials(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
@@ -404,9 +424,8 @@ class Test_real_data_tests(unittest.TestCase):
             self.ytrain, self.yvalid, self.ytest)
 
     def test_real_data_trial_knn(self):
-        ks = np.power(2., np.arange(5)).astype(int)
-        new_row = real_data_trial_knn(self.data_partition, ks)
-        dataset, k, error, hyperparameterTime, trainTime, testTime = new_row.values
+        new_row = real_data_trial_knn(self.data_partition, 1)
+        dataset, k, mse, nmse, trainTime, testTime = new_row.values
 
         try:
             k_is_int = np.issubdtype(k.dtype, np.integer)
@@ -417,23 +436,24 @@ class Test_real_data_tests(unittest.TestCase):
         self.assertTrue(k_is_int)
         self.assertGreater(k, 0)
         self.assertLess(k, len(self.Xtrain))
-        self.assertGreaterEqual(error, 0.)
-        self.assertGreater(hyperparameterTime, 0.)
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
         self.assertGreater(trainTime, 0.)
         self.assertGreater(testTime, 0.)
 
     def test_real_data_trial_spincom(self):
         sigmas = np.power(2., np.arange(5))
-        new_row = real_data_trial_spincom(self.data_partition, sigmas, 10, 1.)
-        dataset, sigma, m, h, error, hyperparameterTime, trainTime, testTime = new_row.values
+        new_row = real_data_trial_spincom(self.data_partition, sigmas, 10, 10, 1.)
+        dataset, sigma, m, r, h, mse, nmse, trainTime, testTime = new_row.values
 
         self.assertTrue(dataset)
         self.assertGreater(sigma, 0)
         self.assertLess(sigma, len(self.Xtrain))
         self.assertGreater(m, 0)
+        self.assertGreater(r, 0)
         self.assertGreater(h, 0)
-        self.assertGreaterEqual(error, 0.)
-        self.assertGreater(hyperparameterTime, 0.)
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
         self.assertGreater(trainTime, 0.)
         self.assertGreater(testTime, 0.)
 
@@ -442,7 +462,7 @@ class Test_real_data_tests(unittest.TestCase):
         alphas = np.array([10, 20, 30, 40])
         kmaxs  = np.array([25, 50, 75])
         new_row = real_data_trial_adaknn(self.data_partition, alphas, kmaxs)
-        dataset, alpha, kmax, error, hyperparameterTime, trainTime, testTime = new_row.values
+        dataset, alpha, kmax, mse, nmse, trainTime, testTime = new_row.values
 
         try:
             alpha_is_int = np.issubdtype(alpha.dtype, np.integer)
@@ -460,12 +480,13 @@ class Test_real_data_tests(unittest.TestCase):
         self.assertTrue(alpha_is_int)
         self.assertGreater(alpha, 1)
         self.assertLess(alpha, kmax)
-        self.assertGreaterEqual(error, 0.)
-        self.assertGreater(hyperparameterTime, 0.)
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
         self.assertGreater(trainTime, 0.)
-        self.assertGreater(testTime, 0.)
+        self.assertGreater(testTime,  0.)
 
 
+    @unittest.skip("Computationally expensive test")
     def test_real_data_trial_ktree(self):
         rhos1  = np.power(10., np.arange(-5, -2))
         rhos2  = np.power(10., np.arange(-5, -2))
@@ -478,7 +499,7 @@ class Test_real_data_tests(unittest.TestCase):
             "sigmas" : sigmas,
         }
         new_row = real_data_trial_ktree(self.data_partition, hyperparam_grid)
-        dataset, rho1, rho2, k, sigma, error, hyperparameterTime, trainTime, testTime = new_row.values
+        dataset, rho1, rho2, k, sigma, mse, nmse, trainTime, testTime = new_row.values
 
         try:
             k_is_int  = np.issubdtype(k.dtype,  np.integer)
@@ -491,7 +512,106 @@ class Test_real_data_tests(unittest.TestCase):
         self.assertTrue(k_is_int)
         self.assertGreater(k, 1)
         self.assertGreater(sigma, 0.)
-        self.assertGreaterEqual(error, 0.)
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
+        self.assertGreater(trainTime, 0.)
+        self.assertGreater(testTime, 0.)
+
+
+
+
+#@unittest.skip("Computationally expensive tests")
+class Test_real_data_trials_search(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        np.random.seed(55455)
+        self.Xtrain = np.random.normal(0, 1, (50, 5))
+        self.ytrain = np.random.normal(0, 1, (50,))
+        self.Xvalid = np.random.normal(0, 1, (20, 5))
+        self.yvalid = np.random.normal(0, 1, (20,))
+        self.Xtest  = np.random.normal(0, 1, (10, 5))
+        self.ytest  = np.random.normal(0, 1, (10,))
+        self.data_partition = ("Air", self.Xtrain, self.Xvalid, self.Xtest,
+            self.ytrain, self.yvalid, self.ytest)
+
+    def test_real_data_trial_search_knn(self):
+        ks = np.power(2., np.arange(5)).astype(int)
+        new_row = real_data_trial_search_knn(self.data_partition, ks)
+        dataset, k, mse, nmse, hyperparameterTime, trainTime, testTime = new_row.values
+
+        try:
+            k_is_int = np.issubdtype(k.dtype, np.integer)
+        except(AttributeError):
+            k_is_int = type(k) == int
+
+        self.assertTrue(dataset)
+        self.assertTrue(k_is_int)
+        self.assertGreater(k, 0)
+        self.assertLess(k, len(self.Xtrain))
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
+        self.assertGreater(hyperparameterTime, 0.)
+        self.assertGreater(trainTime, 0.)
+        self.assertGreater(testTime, 0.)
+
+    def test_real_data_trial_search_adaknn(self):
+        alphas = np.array([10, 20, 30, 40])
+        kmaxs  = np.array([25, 50, 75])
+        new_row = real_data_trial_search_adaknn(self.data_partition, alphas, kmaxs)
+        dataset, alpha, kmax, mse, nmse, hyperparameterTime, trainTime, testTime = new_row.values
+
+        try:
+            alpha_is_int = np.issubdtype(alpha.dtype, np.integer)
+        except(AttributeError):
+            alpha_is_int = type(alpha) == int
+
+        try:
+            kmax_is_int  = np.issubdtype(kmax.dtype,  np.integer)
+        except(AttributeError):
+            kmax_is_int = type(kmax) == int
+
+        self.assertTrue(dataset)
+        self.assertTrue(kmax_is_int)
+        self.assertGreater(kmax, 1)
+        self.assertTrue(alpha_is_int)
+        self.assertGreater(alpha, 1)
+        self.assertLess(alpha, kmax)
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
+        self.assertGreater(hyperparameterTime, 0.)
+        self.assertGreater(trainTime, 0.)
+        self.assertGreater(testTime, 0.)
+
+
+    @unittest.skip("Computationally expensive test")
+    def test_real_data_trial_search_ktree(self):
+        rhos1  = np.power(10., np.arange(-5, -2))
+        rhos2  = np.power(10., np.arange(-5, -2))
+        ks     = np.power(2.,  np.arange(5)).astype(int)
+        sigmas = np.power(10., np.arange(-5, -2))
+        hyperparam_grid = {
+            "rhos1"  : rhos1,
+            "rhos2"  : rhos2,
+            "ks"     : ks,
+            "sigmas" : sigmas,
+        }
+        new_row = real_data_trial_search_ktree(self.data_partition, hyperparam_grid)
+        dataset, rho1, rho2, k, sigma, mse, nmse, hyperparameterTime, trainTime, testTime = new_row.values
+
+        try:
+            k_is_int  = np.issubdtype(k.dtype,  np.integer)
+        except(AttributeError):
+            k_is_int = type(k) == int
+
+        self.assertTrue(dataset)
+        self.assertGreater(rho1, 0.)
+        self.assertGreater(rho2, 0.)
+        self.assertTrue(k_is_int)
+        self.assertGreater(k, 1)
+        self.assertGreater(sigma, 0.)
+        self.assertGreaterEqual(mse,  0.)
+        self.assertGreaterEqual(nmse, 0.)
         self.assertGreater(hyperparameterTime, 0.)
         self.assertGreater(trainTime, 0.)
         self.assertGreater(testTime, 0.)

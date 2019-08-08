@@ -67,25 +67,45 @@ def initialize_k_generalization(X, y, h, sigma):
     return g, ridx
 
 
-def add_training_datum(g, X, y, idx, ridx):
+def add_training_datum(g, X, y, idx):
     knew = fitk_spincom(X, y, idx)
     xnew = np.atleast_2d(X[idx])
     g.update(xnew, knew)
 
+
+def candidate_subset(X, ridx, r):
+    if r < len(ridx): 
+        idx_eval_novelty = np.random.choice(len(ridx), r, False)
+        idx_eval_novelty = np.sort(idx_eval_novelty)
+        ridx = ridx[idx_eval_novelty]
+    Xr = np.atleast_2d(X[ridx])
+    return Xr
+
+
+def find_most_novel_training_datum(g, X, ridx, r = 100):
+    Xr    = candidate_subset(X, ridx, r)
+    gamma = g.novelty(Xr)
+    idx   = np.argmin(gamma)
+    return ridx[idx]
+
+
+def update_inactive_set(ridx, idx):
     idx_ = np.searchsorted(ridx, idx)
     ridx = np.delete(ridx, idx_)
+    return ridx
 
 
-def find_most_novel_training_datum(g, X, y, ridx):
-    Xr     = np.atleast_2d(X[ridx])
-    gamma  = g.novelty(Xr)
-    idx = np.argmin(gamma)
-    return idx
+def add_most_novel_training_datum(g, X, y, ridx, r):
+    idxnew = find_most_novel_training_datum(g, X, ridx, r)
+    add_training_datum(g, X, y, idxnew)
+    ridx = update_inactive_set(ridx, idxnew)
 
 
-def add_most_novel_training_datum(g, X, y, ridx):
-    idxnew = find_most_novel_training_datum(g, X, y, ridx)
-    add_training_datum(g, X, y, idxnew, ridx)
+def generalizek_spincom(X, y, m, r, h, sigma):
+    g, ridx = initialize_k_generalization(X, y, h, sigma)
+    for _ in range(2, m):
+        add_most_novel_training_datum(g, X, y, ridx, r)
+    return g
 
 
 def generalizek_adaknn(X, y, alpha, kmax):
@@ -98,14 +118,6 @@ def generalizek_adaknn(X, y, alpha, kmax):
     mlp.fit(X, ktrain)
 
     return mlp
-
-
-def generalizek_spincom(X, y, m, h, sigma):
-    g, ridx = initialize_k_generalization(X, y, h, sigma)
-    for _ in range(2, m):
-        add_most_novel_training_datum(g, X, y, ridx)
-
-    return g
 
 
 def choose_k_from_random_subset(Krand, ysorted, y0):
@@ -150,6 +162,7 @@ def atleast_2d_T(X):
 ###############################################################################
 
 def knnTrainTest(X, y, Xtest, ytest, ki):
+    ytest = ytest.squeeze()
     knr  = KNeighborsRegressor(n_neighbors = ki, algorithm = "brute")
     t0 = datetime.now()
     knr.fit(X, y)
@@ -157,21 +170,22 @@ def knnTrainTest(X, y, Xtest, ytest, ki):
     ## If this receives multiple one-dimensional testing data, it will 
     ## misinterpret them as a single, multi-dimensional datum
     yhat = knr.predict( np.atleast_2d(Xtest) )
-    errors = yhat.squeeze() - ytest.squeeze()
+    errors = yhat.squeeze() - ytest
     t2 = datetime.now()
+    normalized_errors = errors / np.sum(ytest ** 2)
 
     trainTime = (t1 - t0).total_seconds()
     testTime  = (t2 - t1).total_seconds()
 
-    return errors, trainTime, testTime
+    return errors, normalized_errors, trainTime, testTime
 
 
 
 def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
     t0 = datetime.now()
 
-    m, h, sigma = hyperparams.values()
-    g = generalizek_spincom(X, y, m, h, sigma)
+    m, r, h, sigma = hyperparams.values()
+    g = generalizek_spincom(X, y, m, r, h, sigma)
 
     t1 = datetime.now()
 
@@ -193,11 +207,12 @@ def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
             errors[i] = error
 
     t2 = datetime.now()
+    normalized_errors = errors / np.sum(ytest ** 2)
 
     trainTime = (t1 - t0).total_seconds()
     testTime  = (t2 - t1).total_seconds()
 
-    return errors, ktest, trainTime, testTime
+    return errors, normalized_errors, ktest, trainTime, testTime
 
 
 
@@ -228,10 +243,11 @@ def adaknnTrainTest(X, y, Xtest, ytest, hyperparams):
 
     t2 = datetime.now()
 
+    normalized_errors = errors / np.sum(ytest ** 2)
     trainTime = (t1 - t0).total_seconds()
     testTime  = (t2 - t1).total_seconds()
 
-    return errors, ktest, trainTime, testTime
+    return errors, normalized_errors, ktest, trainTime, testTime
 
 
 
@@ -265,10 +281,11 @@ def ktreeTrainTest(X, y, Xtest, ytest, hyperparams):
 
     t2 = datetime.now()
 
+    normalized_errors = errors / np.sum(ytest ** 2)
     trainTime = (t1 - t0).total_seconds()
     testTime  = (t2 - t1).total_seconds()
 
-    return errors, ktest, trainTime, testTime
+    return errors, normalized_errors, ktest, trainTime, testTime
 
 
 
@@ -293,11 +310,12 @@ def optimize_k(Xtrain, ytrain, Xvalid, yvalid, ks):
 
 
 
-def optimize_sigma(Xtrain, ytrain, Xvalid, yvalid, sigmas, m, h):
+def optimize_sigma(Xtrain, ytrain, Xvalid, yvalid, sigmas, m, r, h):
     spincom_validation = pd.DataFrame({"error" : np.nan}, sigmas)
     for sigma in sigmas:
         hyperparams = {
             "m"     : m,
+            "r"     : r,
             "h"     : h,
             "sigma" : sigma,
         }
@@ -358,13 +376,99 @@ def optimize_hyperparams_ktree(Xtrain, ytrain, Xvalid, yvalid, hyperparam_grid):
 
 
 
-
-
 ###############################################################################
 ## Real data trials
 ###############################################################################
 
-def real_data_trial_knn(data_partition, ks):
+def real_data_trial_knn(data_partition, k):
+    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+
+    X = np.vstack((Xtrain, Xvalid))
+    y = np.append(ytrain, yvalid)
+    errors, normalized_errors, trainTime, testTime = knnTrainTest(X, y, Xtest, ytest, k)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
+
+    new_row = pd.Series({
+        "dataset" : dataset,
+        "k"       : k,
+        "mse"     : error,
+        "nmse"    : normalized_error,
+        "trainTime"          : trainTime,
+        "testTime"           : testTime,
+    })
+    return new_row
+
+
+def real_data_trial_spincom(data_partition, sigma, m, r, h):
+    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+    X = np.vstack((Xtrain, Xvalid))
+    y = np.append(ytrain, yvalid)
+
+    hyperparams = {"m" : m, "r" : r, "h" : h, "sigma" : sigma}
+    errors, normalized_errors, ktest, trainTime, testTime = spincomTrainTest(X, y, Xtest, ytest, hyperparams)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
+
+    new_row = pd.Series({
+        "dataset" : dataset,
+        "sigma"   : sigma,
+        "m"       : m,
+        "r"       : r,
+        "h"       : h,
+        "mse"     : error,
+        "nmse"    : normalized_error,
+        "trainTime" : trainTime,
+        "testTime"  : testTime,
+    })
+    return new_row
+
+def real_data_trial_adaknn(data_partition, alpha, kmax):
+    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+    X = np.vstack((Xtrain, Xvalid))
+    y = np.append(ytrain, yvalid)
+    hyperparams = {"alpha" : alpha, "kmax" : kmax}
+    errors, normalized_errors, ktest, trainTime, testTime = adaknnTrainTest(X, y, Xtest, ytest, hyperparams)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
+
+    new_row = pd.Series({
+        "dataset" : dataset,
+        "alpha"   : alpha,
+        "kmax"    : kmax,
+        "mse"     : error,
+        "nmse"    : normalized_error,
+        "trainTime"          : trainTime,
+        "testTime"           : testTime,
+    })
+    return new_row
+
+def real_data_trial_ktree(data_partition, hyperparams):
+    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+    X = np.vstack((Xtrain, Xvalid))
+    y = np.append(ytrain, yvalid)
+    errors, normalized_errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
+    error = np.sum(errors ** 2)
+    normalized_error = np.sum(errors ** 2)
+
+    new_row = pd.Series({
+        "dataset" : dataset,
+        "rho1"    : rho1,
+        "rho2"    : rho2,
+        "k"       : k,
+        "sigma"   : sigma,
+        "mse"     : error,
+        "nmse"    : normalized_error,
+        "trainTime"          : trainTime,
+        "testTime"           : testTime,
+    })
+    return new_row
+
+###############################################################################
+## Real data trials with hyperparameter search
+###############################################################################
+
+def real_data_trial_search_knn(data_partition, ks):
     dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
     t0 = datetime.now()
     k  = optimize_k(Xtrain, ytrain, Xvalid, yvalid, ks)[0]
@@ -373,45 +477,22 @@ def real_data_trial_knn(data_partition, ks):
 
     X = np.vstack((Xtrain, Xvalid))
     y = np.append(ytrain, yvalid)
-    errors, trainTime, testTime = knnTrainTest(X, y, Xtest, ytest, k)
-    error = np.sum(errors ** 2)
+    errors, normalized_errors, trainTime, testTime = knnTrainTest(X, y, Xtest, ytest, k)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
 
     new_row = pd.Series({
         "dataset" : dataset,
         "k"       : k,
-        "error"   : error,
+        "mse"     : error,
+        "nmse"    : normalized_error,
         "hyperparameterTime" : hyperparameterTime,
         "trainTime"          : trainTime,
         "testTime"           : testTime,
     })
     return new_row
 
-def real_data_trial_spincom(data_partition, sigmas, m, h):
-    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
-    t0 = datetime.now()
-    sigma  = optimize_sigma(Xtrain, ytrain, Xvalid, yvalid, sigmas, m, h)[0]
-    t1 = datetime.now()
-    hyperparameterTime = (t1 - t0).total_seconds()
-
-    X = np.vstack((Xtrain, Xvalid))
-    y = np.append(ytrain, yvalid)
-    hyperparams = {"m" : m, "h" : h, "sigma" : sigma}
-    errors, ktest, trainTime, testTime = spincomTrainTest(X, y, Xtest, ytest, hyperparams)
-    error = np.sum(errors ** 2)
-
-    new_row = pd.Series({
-        "dataset" : dataset,
-        "sigma"   : sigma,
-        "m"       : m,
-        "h"       : h,
-        "error"   : error,
-        "hyperparameterTime" : hyperparameterTime,
-        "trainTime"          : trainTime,
-        "testTime"           : testTime,
-    })
-    return new_row
-
-def real_data_trial_adaknn(data_partition, alphas, kmaxs):
+def real_data_trial_search_adaknn(data_partition, alphas, kmaxs):
     dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
     t0 = datetime.now()
     alpha, kmax  = optimize_hyperparams_adaknn(Xtrain, ytrain, Xvalid, yvalid, alphas, kmaxs)[:2]
@@ -421,21 +502,23 @@ def real_data_trial_adaknn(data_partition, alphas, kmaxs):
     X = np.vstack((Xtrain, Xvalid))
     y = np.append(ytrain, yvalid)
     hyperparams = {"alpha" : alpha, "kmax" : kmax}
-    errors, ktest, trainTime, testTime = adaknnTrainTest(X, y, Xtest, ytest, hyperparams)
-    error = np.sum(errors ** 2)
+    errors, normalized_errors, ktest, trainTime, testTime = adaknnTrainTest(X, y, Xtest, ytest, hyperparams)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
 
     new_row = pd.Series({
         "dataset" : dataset,
         "alpha"   : alpha,
         "kmax"    : kmax,
-        "error"   : error,
+        "mse"     : error,
+        "nmse"    : normalized_error,
         "hyperparameterTime" : hyperparameterTime,
         "trainTime"          : trainTime,
         "testTime"           : testTime,
     })
     return new_row
 
-def real_data_trial_ktree(data_partition, hyperparam_grid):
+def real_data_trial_search_ktree(data_partition, hyperparam_grid):
     dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
     t0 = datetime.now()
     rho1, rho2, k, sigma = \
@@ -451,8 +534,9 @@ def real_data_trial_ktree(data_partition, hyperparam_grid):
         "k"     : k,
         "sigma" : sigma,
     }
-    errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
-    error = np.sum(errors ** 2)
+    errors, normalized_errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
 
     new_row = pd.Series({
         "dataset" : dataset,
@@ -460,7 +544,8 @@ def real_data_trial_ktree(data_partition, hyperparam_grid):
         "rho2"    : rho2,
         "k"       : k,
         "sigma"   : sigma,
-        "error"   : error,
+        "mse"     : error,
+        "nmse"    : normalized_error,
         "hyperparameterTime" : hyperparameterTime,
         "trainTime"          : trainTime,
         "testTime"           : testTime,

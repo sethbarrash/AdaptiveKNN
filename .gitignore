@@ -184,17 +184,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-    © 2019 GitHub, Inc.
-    Terms
-    Privacy
-    Security
-    Status
-    Help
-
-    Contact GitHub
-    Pricing
-    API
-    Training
-    Blog
-    About
-
+# Files
+functional_tests.py
+ktree.py
+learners.py
+optimization.py
