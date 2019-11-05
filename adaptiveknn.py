@@ -5,10 +5,7 @@ import SparseGaussianProcess as sgp
 from datetime import datetime
 from itertools import product
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.neural_network import MLPRegressor
 
-import learners as lrn
-from sklearn.tree import DecisionTreeClassifier
 
 def get_neighbor_order(X, y, idx):
     x0 = X[idx]
@@ -33,15 +30,6 @@ def calculate_neighbor_errors(ysorted, y0):
     ybar = ysum / np.arange(1, len(ysorted) + 1)
     e = ybar - y0
     return e
-
-
-def fitk_spincom_incorrect(X, y, idx):
-    y0 = y[idx]
-    Xsorted, ysorted = get_neighborhood(X, y, idx)
-    e = calculate_neighbor_errors(ysorted, y0)
-    k = np.argmin(e) + 1
-
-    return k
 
 
 def fitk_spincom(X, y, idx):
@@ -108,8 +96,7 @@ def generalizek_spincom(X, y, m, r, h, sigma):
     return g
 
 
-
-def chisel_k(ki, n):
+def quantize_k(ki, n):
     k = int(ki)
     if k < 1 : k = 1
     if k > n : k = n
@@ -141,7 +128,7 @@ def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
     for i in range(len(ytest)):
         xi = np.atleast_2d(Xtest[i])
         ki = g.predict(xi)
-        ki = chisel_k(ki, n)
+        ki = quantize_k(ki, n)
         ktest[i] = ki
 
         error = knnTrainTest(X, y, xi, ytest[i], ki)
@@ -218,7 +205,9 @@ def real_data_trial_spincom(data_partition, sigma, m, r, h):
 
 
 
-
+from sklearn.neural_network import MLPRegressor
+import learners as lrn
+from sklearn.tree import DecisionTreeClassifier
 
 def fitk_adaknn(X, y, idx, alpha, kmax):
     alpha, kmax = int(alpha), int(kmax)
@@ -296,7 +285,7 @@ def adaknnTrainTest(X, y, Xtest, ytest, hyperparams):
     for i in range(len(ytest)):
         xi = Xtest[i]
         ki = g.predict(np.atleast_2d(xi))
-        ki = chisel_k(ki, n)
+        ki = quantize_k(ki, n)
         ktest[i] = ki
 
         error = knnTrainTest(X, y, xi, ytest[i], ki)

@@ -387,24 +387,24 @@ class TestUtilities(unittest.TestCase):
         np.testing.assert_array_equal(x, xtrue)
 
 
-    def test_chisel_k_0(self):
+    def test_quantize_k_0(self):
         n = 100
         k = 0
-        k = chisel_k(k, n)
+        k = quantize_k(k, n)
         ktrue = 1
         self.assertEqual(k, ktrue)
 
-    def test_chisel_k_1(self):
+    def test_quantize_k_1(self):
         n = 100
         k = 1.75
-        k = chisel_k(k, n)
+        k = quantize_k(k, n)
         ktrue = 1
         self.assertEqual(k, ktrue)
 
-    def test_chisel_k_2(self):
+    def test_quantize_k_2(self):
         n = 100
         k = 110
-        k = chisel_k(k, n)
+        k = quantize_k(k, n)
         ktrue = 100
         self.assertEqual(k, ktrue)
 
