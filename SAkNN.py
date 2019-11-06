@@ -37,9 +37,9 @@ class SAKNeighborsBase:
 
 
 class SAKNeighborsRegressor(SAKNeighborsBase):
-    
-    def __init__(self):
-        pass
+
+    def __init__(self, h, r, sigma):
+        super().__init__(h, r, sigma)
 
     def _calculate_neighbor_errors(self, ysorted, y0, task):
         if task == 'r':
@@ -59,7 +59,6 @@ class SAKNeighborsRegressor(SAKNeighborsBase):
         else: 
             idx_correct = np.where(e)[0]
             k = np.random.choice(idx_correct) + 1
-
         return k
 
     def learn_next_instance(self):
@@ -81,47 +80,36 @@ class SAKNeighborsRegressor(SAKNeighborsBase):
 
 
 
+class SAKNeighborsClassifier(SAKNeighborsBase):
 
+    def __init__(self, h, r, sigma):
+        super().__init__(h, r, sigma)
 
+    def _calculate_neighbor_errors(self, ysorted, y0, task):
+        if task == 'r':
+            ysum = np.cumsum(ysorted)
+            ybar = ysum / np.arange(1, len(ysorted) + 1)
+            e = ybar - y0
+            return e
+        else:
+            return ysorted == y0
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class SAKNeighborsClassifier:
-
-    def __init__(self, h, m, r, sigma):
-        self.h = h
-        self.m = m
-        self.r = r
-        self.sigma = sigma
-
-    def fit(self, X, y):
-        self._fit_X = X
-        self._fit_y = y
-        self.sogp = SparseGaussianProcess(X[0], y[0], self.h, self.sigma)
-        self.sogp.update(X[1], y[1])
-        self.selector = SparseGaussianProcessDataSelector(self.sogp)
+    def fitk(self, idx, task):
+        y0 = self._fit_y[idx]
+        Xsorted, ysorted = self._get_neighborhood(idx)
+        e = self._calculate_neighbor_errors(ysorted, y0, task)
+        if task == 'r':
+            k = np.argmin(np.abs(e)) + 1
+        else: 
+            idx_correct = np.where(e)[0]
+            k = np.random.choice(idx_correct) + 1
+        return k
 
     def learn_next_instance(self):
         ## Actively select the next training instance whose k-value to label
         idx = self.selector.select(self._fit_X, self.r)
         ## Update the sparse Gaussian process with the newly labeled datum
-        ki = fitk_spincom(self._fit_X, self._fit_y, idx, 'c')
+        ki = self.fitk(idx, 'c')
         self.sogp.update(self._fit_X[idx], self._fit_y[idx])
 
     def predict(self, X):
