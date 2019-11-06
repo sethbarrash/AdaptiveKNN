@@ -3,42 +3,6 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from SparseGaussianProcess import SparseGaussianProcess
 from SparseGaussianProcessDataSelector import SparseGaussianProcessDataSelector
 
-def get_neighbor_order(X, y, idx):
-    x0 = X[idx]
-    if len(X.shape) == 1 : xdist = np.abs(X - x0)
-    else                 : xdist = np.abs( np.sum(X - x0, 1) )
-    neighbor_order = np.argsort(xdist)[1:]
-
-    return neighbor_order
-
-def get_neighborhood(X, y, idx):
-    nidx = get_neighbor_order(X, y, idx)
-
-    Xsorted = X[nidx]
-    ysorted = y[nidx]
-
-    return Xsorted, ysorted
-
-def calculate_neighbor_errors(ysorted, y0, task):
-    if task == 'r':
-        ysum = np.cumsum(ysorted)
-        ybar = ysum / np.arange(1, len(ysorted) + 1)
-        e = ybar - y0
-        return e
-    else:
-        return ysorted == y0
-
-def fitk_spincom(X, y, idx, task):
-    y0 = y[idx]
-    Xsorted, ysorted = get_neighborhood(X, y, idx)
-    e = calculate_neighbor_errors(ysorted, y0, task)
-    if task == 'r':
-        k = np.argmin(np.abs(e)) + 1
-    else: 
-        idx_correct = np.where(e)[0]
-        k = np.random.choice(idx_correct) + 1
-
-    return k
 
 
 
@@ -49,6 +13,43 @@ class SAKNeighborsRegressor:
         self.m = m
         self.r = r
         self.sigma = sigma
+
+    def _get_neighbor_order(self, idx):
+        x0 = self._fit_X[idx]
+        if len(self._fit_X.shape) == 1 : xdist = np.abs(self._fit_X - x0)
+        else                 : xdist = np.abs( np.sum(self._fit_X - x0, 1) )
+        neighbor_order = np.argsort(xdist)[1:]
+
+        return neighbor_order
+
+    def _get_neighborhood(self, idx):
+        nidx = self._get_neighbor_order(idx)
+
+        Xsorted = self._fit_X[nidx]
+        ysorted = self._fit_y[nidx]
+
+        return Xsorted, ysorted
+
+    def _calculate_neighbor_errors(self, ysorted, y0, task):
+        if task == 'r':
+            ysum = np.cumsum(ysorted)
+            ybar = ysum / np.arange(1, len(ysorted) + 1)
+            e = ybar - y0
+            return e
+        else:
+            return ysorted == y0
+
+    def fitk(self, idx, task):
+        y0 = self._fit_y[idx]
+        Xsorted, ysorted = self._get_neighborhood(idx)
+        e = self._calculate_neighbor_errors(ysorted, y0, task)
+        if task == 'r':
+            k = np.argmin(np.abs(e)) + 1
+        else: 
+            idx_correct = np.where(e)[0]
+            k = np.random.choice(idx_correct) + 1
+
+        return k
 
     def fit(self, X, y):
         self._fit_X = X
@@ -61,7 +62,7 @@ class SAKNeighborsRegressor:
         ## Actively select the next training instance whose k-value to label
         idx = self.selector.select(self._fit_X, self.r)
         ## Update the sparse Gaussian process with the newly labeled datum
-        ki = fitk_spincom(self._fit_X, self._fit_y, idx, 'r')
+        ki = self.fitk(idx, 'r')
         self.sogp.update(self._fit_X[idx], self._fit_y[idx])
 
     def predict(self, X):
@@ -73,6 +74,27 @@ class SAKNeighborsRegressor:
             knr.fit(self._fit_X, self._fit_y)
             yhat[i] = knr.predict(xi)[0]
         return yhat
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
