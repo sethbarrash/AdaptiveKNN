@@ -380,7 +380,7 @@ def real_data_trial_spincom(data_partition, sigma, m, r, h):
 
 
 from sklearn.neural_network import MLPRegressor
-import learners as lrn
+#import learners as lrn
 from sklearn.tree import DecisionTreeClassifier
 
 def fitk_adaknn(X, y, idx, alpha, kmax):
@@ -461,41 +461,41 @@ def adaknnTrainTest(X, y, Xtest, ytest, hyperparams):
 
 
 
-def ktreeTrainTest(X, y, Xtest, ytest, hyperparams):
-    t0 = datetime.now()
+# def ktreeTrainTest(X, y, Xtest, ytest, hyperparams):
+#     t0 = datetime.now()
 
-    rho1, rho2, k, sigma = hyperparams.values()
+#     rho1, rho2, k, sigma = hyperparams.values()
 
-    lz = lrn.IKNNzhang(np.atleast_2d(X), y, rho1, rho2, k, sigma)
-    ktrain = lz.Ktrain
-    dtc = DecisionTreeClassifier()
-    dtc.fit(np.atleast_2d(X), ktrain)
+#     lz = lrn.IKNNzhang(np.atleast_2d(X), y, rho1, rho2, k, sigma)
+#     ktrain = lz.Ktrain
+#     dtc = DecisionTreeClassifier()
+#     dtc.fit(np.atleast_2d(X), ktrain)
 
-    t1 = datetime.now()
+#     t1 = datetime.now()
 
-    n = len(X)
-    ktest  = dtc.predict(np.atleast_2d(Xtest)).astype(int)
-    ktest[ktest < 1] = 1
-    ktest[ktest > n] = n
+#     n = len(X)
+#     ktest  = dtc.predict(np.atleast_2d(Xtest)).astype(int)
+#     ktest[ktest < 1] = 1
+#     ktest[ktest > n] = n
 
-    errors = np.zeros_like(ytest)
-    for i in range(len(ytest)):
-        xi = Xtest[i]
-        ki = ktest[i]
+#     errors = np.zeros_like(ytest)
+#     for i in range(len(ytest)):
+#         xi = Xtest[i]
+#         ki = ktest[i]
 
-        error = knnTrainTest(X, y, xi, ytest[i], ki)
-        try:
-            errors[i] = error[0]
-        except(IndexError):
-            errors[i] = error
+#         error = knnTrainTest(X, y, xi, ytest[i], ki)
+#         try:
+#             errors[i] = error[0]
+#         except(IndexError):
+#             errors[i] = error
 
-    t2 = datetime.now()
+#     t2 = datetime.now()
 
-    normalized_errors = errors / np.sum(ytest ** 2)
-    trainTime = (t1 - t0).total_seconds()
-    testTime  = (t2 - t1).total_seconds()
+#     normalized_errors = errors / np.sum(ytest ** 2)
+#     trainTime = (t1 - t0).total_seconds()
+#     testTime  = (t2 - t1).total_seconds()
 
-    return errors, normalized_errors, ktest, trainTime, testTime
+#     return errors, normalized_errors, ktest, trainTime, testTime
 
 
 
@@ -550,21 +550,21 @@ def optimize_hyperparams_adaknn(Xtrain, ytrain, Xvalid, yvalid, alphas, kmaxs):
 
     return alphabest, kmaxbest, adaknn_validation
 
-def optimize_hyperparams_ktree(Xtrain, ytrain, Xvalid, yvalid, hyperparam_grid):
-    idx = pd.MultiIndex.from_product(hyperparam_grid.values())
-    ktree_validation = pd.DataFrame({"error" : np.nan}, idx)
-    for rho1, rho2, k, sigma in idx.values:
-        hyperparams = {
-            "rho1" : rho1,
-            "rho2" : rho2,
-            "k"    : k,
-            "sigma" : sigma,
-        }
-        errors = ktreeTrainTest(Xtrain, ytrain, Xvalid, yvalid, hyperparams)[0]
-        ktree_validation.loc[rho1, rho2, k, sigma]["error"] = np.sum(errors ** 2)
-    rho1best, rho2best, kbest, sigmabest = ktree_validation["error"].idxmin()
+# def optimize_hyperparams_ktree(Xtrain, ytrain, Xvalid, yvalid, hyperparam_grid):
+#     idx = pd.MultiIndex.from_product(hyperparam_grid.values())
+#     ktree_validation = pd.DataFrame({"error" : np.nan}, idx)
+#     for rho1, rho2, k, sigma in idx.values:
+#         hyperparams = {
+#             "rho1" : rho1,
+#             "rho2" : rho2,
+#             "k"    : k,
+#             "sigma" : sigma,
+#         }
+#         errors = ktreeTrainTest(Xtrain, ytrain, Xvalid, yvalid, hyperparams)[0]
+#         ktree_validation.loc[rho1, rho2, k, sigma]["error"] = np.sum(errors ** 2)
+#     rho1best, rho2best, kbest, sigmabest = ktree_validation["error"].idxmin()
 
-    return rho1best, rho2best, kbest, sigmabest, ktree_validation
+#     return rho1best, rho2best, kbest, sigmabest, ktree_validation
 
 
 
@@ -614,26 +614,26 @@ def real_data_trial_adaknn(data_partition, alpha, kmax):
     })
     return new_row
 
-def real_data_trial_ktree(data_partition, hyperparams):
-    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
-    X = np.vstack((Xtrain, Xvalid))
-    y = np.append(ytrain, yvalid)
-    errors, normalized_errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
-    error = np.sum(errors ** 2)
-    normalized_error = np.sum(errors ** 2)
+# def real_data_trial_ktree(data_partition, hyperparams):
+#     dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+#     X = np.vstack((Xtrain, Xvalid))
+#     y = np.append(ytrain, yvalid)
+#     errors, normalized_errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
+#     error = np.sum(errors ** 2)
+#     normalized_error = np.sum(errors ** 2)
 
-    new_row = pd.Series({
-        "dataset" : dataset,
-        "rho1"    : rho1,
-        "rho2"    : rho2,
-        "k"       : k,
-        "sigma"   : sigma,
-        "mse"     : error,
-        "nmse"    : normalized_error,
-        "trainTime"          : trainTime,
-        "testTime"           : testTime,
-    })
-    return new_row
+#     new_row = pd.Series({
+#         "dataset" : dataset,
+#         "rho1"    : rho1,
+#         "rho2"    : rho2,
+#         "k"       : k,
+#         "sigma"   : sigma,
+#         "mse"     : error,
+#         "nmse"    : normalized_error,
+#         "trainTime"          : trainTime,
+#         "testTime"           : testTime,
+#     })
+#     return new_row
 
 ###############################################################################
 ## Real data trials with hyperparameter search
@@ -689,36 +689,36 @@ def real_data_trial_search_adaknn(data_partition, alphas, kmaxs):
     })
     return new_row
 
-def real_data_trial_search_ktree(data_partition, hyperparam_grid):
-    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
-    t0 = datetime.now()
-    rho1, rho2, k, sigma = \
-         optimize_hyperparams_ktree(Xtrain, ytrain, Xvalid, yvalid, hyperparam_grid)[:4]
-    t1 = datetime.now()
-    hyperparameterTime = (t1 - t0).total_seconds()
+# def real_data_trial_search_ktree(data_partition, hyperparam_grid):
+#     dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+#     t0 = datetime.now()
+#     rho1, rho2, k, sigma = \
+#          optimize_hyperparams_ktree(Xtrain, ytrain, Xvalid, yvalid, hyperparam_grid)[:4]
+#     t1 = datetime.now()
+#     hyperparameterTime = (t1 - t0).total_seconds()
 
-    X = np.vstack((Xtrain, Xvalid))
-    y = np.append(ytrain, yvalid)
-    hyperparams = {
-        "rho1"  : rho1,
-        "rho2"  : rho2,
-        "k"     : k,
-        "sigma" : sigma,
-    }
-    errors, normalized_errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
-    error = np.mean(errors ** 2)
-    normalized_error = np.mean(normalized_errors ** 2)
+#     X = np.vstack((Xtrain, Xvalid))
+#     y = np.append(ytrain, yvalid)
+#     hyperparams = {
+#         "rho1"  : rho1,
+#         "rho2"  : rho2,
+#         "k"     : k,
+#         "sigma" : sigma,
+#     }
+#     errors, normalized_errors, ktest, trainTime, testTime = ktreeTrainTest(X, y, Xtest, ytest, hyperparams)
+#     error = np.mean(errors ** 2)
+#     normalized_error = np.mean(normalized_errors ** 2)
 
-    new_row = pd.Series({
-        "dataset" : dataset,
-        "rho1"    : rho1,
-        "rho2"    : rho2,
-        "k"       : k,
-        "sigma"   : sigma,
-        "mse"     : error,
-        "nmse"    : normalized_error,
-        "hyperparameterTime" : hyperparameterTime,
-        "trainTime"          : trainTime,
-        "testTime"           : testTime,
-    })
-    return new_row
+#     new_row = pd.Series({
+#         "dataset" : dataset,
+#         "rho1"    : rho1,
+#         "rho2"    : rho2,
+#         "k"       : k,
+#         "sigma"   : sigma,
+#         "mse"     : error,
+#         "nmse"    : normalized_error,
+#         "hyperparameterTime" : hyperparameterTime,
+#         "trainTime"          : trainTime,
+#         "testTime"           : testTime,
+#     })
+#     return new_row
