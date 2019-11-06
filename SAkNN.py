@@ -3,16 +3,19 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from SparseGaussianProcess import SparseGaussianProcess
 from SparseGaussianProcessDataSelector import SparseGaussianProcessDataSelector
 
+class SAKNeighborsBase:
 
-
-
-class SAKNeighborsRegressor:
-
-    def __init__(self, h, m, r, sigma):
+    def __init__(self, h, r, sigma):
         self.h = h
-        self.m = m
         self.r = r
         self.sigma = sigma
+
+    def fit(self, X, y):
+        self._fit_X = X
+        self._fit_y = y
+        self.sogp = SparseGaussianProcess(X[0], y[0], self.h, self.sigma)
+        self.sogp.update(X[1], y[1])
+        self.selector = SparseGaussianProcessDataSelector(self.sogp)
 
     def _get_neighbor_order(self, idx):
         x0 = self._fit_X[idx]
@@ -29,6 +32,14 @@ class SAKNeighborsRegressor:
         ysorted = self._fit_y[nidx]
 
         return Xsorted, ysorted
+
+
+
+
+class SAKNeighborsRegressor(SAKNeighborsBase):
+    
+    def __init__(self):
+        pass
 
     def _calculate_neighbor_errors(self, ysorted, y0, task):
         if task == 'r':
@@ -50,13 +61,6 @@ class SAKNeighborsRegressor:
             k = np.random.choice(idx_correct) + 1
 
         return k
-
-    def fit(self, X, y):
-        self._fit_X = X
-        self._fit_y = y
-        self.sogp = SparseGaussianProcess(X[0], y[0], self.h, self.sigma)
-        self.sogp.update(X[1], y[1])
-        self.selector = SparseGaussianProcessDataSelector(self.sogp)
 
     def learn_next_instance(self):
         ## Actively select the next training instance whose k-value to label
