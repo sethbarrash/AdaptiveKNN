@@ -3,6 +3,8 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from SparseGaussianProcess import SparseGaussianProcess
 from SparseGaussianProcessDataSelector import SparseGaussianProcessDataSelector
 
+
+
 class SAKNeighborsBase:
 
     def __init__(self, h, r, sigma):
@@ -22,7 +24,6 @@ class SAKNeighborsBase:
         if len(self._fit_X.shape) == 1 : xdist = np.abs(self._fit_X - x0)
         else                 : xdist = np.abs( np.sum(self._fit_X - x0, 1) )
         neighbor_order = np.argsort(xdist)[1:]
-
         return neighbor_order
 
     def _get_neighborhood(self, idx):
@@ -32,7 +33,6 @@ class SAKNeighborsBase:
         ysorted = self._fit_y[nidx]
 
         return Xsorted, ysorted
-
 
 
 
@@ -47,22 +47,18 @@ class SAKNeighborsRegressor(SAKNeighborsBase):
         e = ybar - y0
         return e
 
-    def fitk(self, idx, task):
+    def _fitk(self, idx):
         y0 = self._fit_y[idx]
         Xsorted, ysorted = self._get_neighborhood(idx)
         e = self._calculate_neighbor_errors(ysorted, y0)
-        if task == 'r':
-            k = np.argmin(np.abs(e)) + 1
-        else: 
-            idx_correct = np.where(e)[0]
-            k = np.random.choice(idx_correct) + 1
+        k = np.argmin(np.abs(e)) + 1
         return k
 
     def learn_next_instance(self):
         ## Actively select the next training instance whose k-value to label
         idx = self.selector.select(self._fit_X, self.r)
         ## Update the sparse Gaussian process with the newly labeled datum
-        ki = self.fitk(idx, 'r')
+        ki = self._fitk(idx)
         self.sogp.update(self._fit_X[idx], self._fit_y[idx])
 
     def predict(self, X):
@@ -85,22 +81,19 @@ class SAKNeighborsClassifier(SAKNeighborsBase):
     def _calculate_neighbor_errors(self, ysorted, y0):
             return ysorted == y0
 
-    def fitk(self, idx, task):
+    def _fitk(self, idx):
         y0 = self._fit_y[idx]
         Xsorted, ysorted = self._get_neighborhood(idx)
         e = self._calculate_neighbor_errors(ysorted, y0)
-        if task == 'r':
-            k = np.argmin(np.abs(e)) + 1
-        else: 
-            idx_correct = np.where(e)[0]
-            k = np.random.choice(idx_correct) + 1
+        idx_correct = np.where(e)[0]
+        k = np.random.choice(idx_correct) + 1
         return k
 
     def learn_next_instance(self):
         ## Actively select the next training instance whose k-value to label
         idx = self.selector.select(self._fit_X, self.r)
         ## Update the sparse Gaussian process with the newly labeled datum
-        ki = self.fitk(idx, 'c')
+        ki = self._fitk(idx)
         self.sogp.update(self._fit_X[idx], self._fit_y[idx])
 
     def predict(self, X):
