@@ -1,4 +1,25 @@
-from adaptiveknn import *
+import numpy as np
+
+def candidate_subset(X, ridx, r):
+    if r < len(ridx): 
+        idx_eval_novelty = np.random.choice(len(ridx), r, False)
+        idx_eval_novelty = np.sort(idx_eval_novelty)
+        ridx = ridx[idx_eval_novelty]
+    Xr = np.atleast_2d(X[ridx])
+    return Xr
+
+def find_most_novel_training_datum(g, X, ridx, r = 100):
+    Xr    = candidate_subset(X, ridx, r)
+    gamma = g.novelty(Xr)
+    idx   = np.argmin(gamma)
+    return ridx[idx]
+
+
+def update_inactive_set(ridx, idx):
+    idx_ = np.searchsorted(ridx, idx)
+    ridx = np.delete(ridx, idx_)
+    return ridx
+
 
 class SparseGaussianProcessDataSelector:
 

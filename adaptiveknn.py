@@ -81,10 +81,7 @@ def atleast_2d_T(X):
 ###############################################################################
 
 def calculate_neighbor_classification_errors(ysorted, y0):
-    ysum = np.cumsum(ysorted)
-    ybar = ysum / np.arange(1, len(ysorted) + 1)
-    e = ybar == y0
-    return e
+    return ysorted == y0
 
 
 def fitk_spincom_classification(X, y, idx):
