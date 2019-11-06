@@ -59,7 +59,7 @@ class SAKNeighborsRegressor(SAKNeighborsBase):
         idx = self.selector.select(self._fit_X, self.r)
         ## Update the sparse Gaussian process with the newly labeled datum
         ki = self._fitk(idx)
-        self.sogp.update(self._fit_X[idx], self._fit_y[idx])
+        self.sogp.update(self._fit_X[idx], ki)
 
     def predict(self, X):
         yhat = np.zeros((len(X),))
@@ -94,7 +94,7 @@ class SAKNeighborsClassifier(SAKNeighborsBase):
         idx = self.selector.select(self._fit_X, self.r)
         ## Update the sparse Gaussian process with the newly labeled datum
         ki = self._fitk(idx)
-        self.sogp.update(self._fit_X[idx], self._fit_y[idx])
+        self.sogp.update(self._fit_X[idx], ki)
 
     def predict(self, X):
         yhat = np.zeros((len(X),))
