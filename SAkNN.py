@@ -41,19 +41,16 @@ class SAKNeighborsRegressor(SAKNeighborsBase):
     def __init__(self, h, r, sigma):
         super().__init__(h, r, sigma)
 
-    def _calculate_neighbor_errors(self, ysorted, y0, task):
-        if task == 'r':
-            ysum = np.cumsum(ysorted)
-            ybar = ysum / np.arange(1, len(ysorted) + 1)
-            e = ybar - y0
-            return e
-        else:
-            return ysorted == y0
+    def _calculate_neighbor_errors(self, ysorted, y0):
+        ysum = np.cumsum(ysorted)
+        ybar = ysum / np.arange(1, len(ysorted) + 1)
+        e = ybar - y0
+        return e
 
     def fitk(self, idx, task):
         y0 = self._fit_y[idx]
         Xsorted, ysorted = self._get_neighborhood(idx)
-        e = self._calculate_neighbor_errors(ysorted, y0, task)
+        e = self._calculate_neighbor_errors(ysorted, y0)
         if task == 'r':
             k = np.argmin(np.abs(e)) + 1
         else: 
@@ -85,19 +82,13 @@ class SAKNeighborsClassifier(SAKNeighborsBase):
     def __init__(self, h, r, sigma):
         super().__init__(h, r, sigma)
 
-    def _calculate_neighbor_errors(self, ysorted, y0, task):
-        if task == 'r':
-            ysum = np.cumsum(ysorted)
-            ybar = ysum / np.arange(1, len(ysorted) + 1)
-            e = ybar - y0
-            return e
-        else:
+    def _calculate_neighbor_errors(self, ysorted, y0):
             return ysorted == y0
 
     def fitk(self, idx, task):
         y0 = self._fit_y[idx]
         Xsorted, ysorted = self._get_neighborhood(idx)
-        e = self._calculate_neighbor_errors(ysorted, y0, task)
+        e = self._calculate_neighbor_errors(ysorted, y0)
         if task == 'r':
             k = np.argmin(np.abs(e)) + 1
         else: 
