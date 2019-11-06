@@ -25,40 +25,7 @@ def get_neighborhood(X, y, idx):
     return Xsorted, ysorted
 
 
-def calculate_neighbor_errors(ysorted, y0):
-    ysum = np.cumsum(ysorted)
-    ybar = ysum / np.arange(1, len(ysorted) + 1)
-    e = ybar - y0
-    return e
 
-
-def fitk_spincom(X, y, idx):
-    y0 = y[idx]
-    Xsorted, ysorted = get_neighborhood(X, y, idx)
-    e = calculate_neighbor_errors(ysorted, y0)
-    k = np.argmin(np.abs(e)) + 1
-
-    return k
-
-
-def initialize_k_generalization(X, y, h, sigma):
-    k0 = fitk_spincom(X, y, 0)
-    k1 = fitk_spincom(X, y, 1)
-
-    x0 = np.atleast_2d(X[0])
-    x1 = np.atleast_2d(X[1])
-
-    g = sgp.SparseGaussianProcess(x0, k0, h, sigma)
-    g.update(x1, k1)
-    ridx = np.arange(2, len(X))
-
-    return g, ridx
-
-
-def add_training_datum(g, X, y, idx):
-    knew = fitk_spincom(X, y, idx)
-    xnew = np.atleast_2d(X[idx])
-    g.update(xnew, knew)
 
 
 def candidate_subset(X, ridx, r):
@@ -89,11 +56,7 @@ def add_most_novel_training_datum(g, X, y, ridx, r):
     ridx = update_inactive_set(ridx, idxnew)
 
 
-def generalizek_spincom(X, y, m, r, h, sigma):
-    g, ridx = initialize_k_generalization(X, y, h, sigma)
-    for _ in range(2, m):
-        add_most_novel_training_datum(g, X, y, ridx, r)
-    return g
+
 
 
 def quantize_k(ki, n):
@@ -116,6 +79,55 @@ def atleast_2d_T(X):
 ###############################################################################
 ## Classification
 ###############################################################################
+
+def calculate_neighbor_classification_errors(ysorted, y0):
+    ysum = np.cumsum(ysorted)
+    ybar = ysum / np.arange(1, len(ysorted) + 1)
+    e = ybar == y0
+    return e
+
+
+def fitk_spincom_classification(X, y, idx):
+    y0 = y[idx]
+    Xsorted, ysorted = get_neighborhood(X, y, idx)
+    e = calculate_neighbor_classification_errors(ysorted, y0)
+    if np.any(e):
+        idx_correct = np.where(e)[0]
+        k = np.random.choice(idx_correct) + 1
+    else:
+        k = 1
+
+    return k
+
+
+## Fix this one
+def initialize_k_generalization(X, y, h, sigma):
+    k0 = fitk_spincom(X, y, 0)
+    k1 = fitk_spincom(X, y, 1)
+
+    x0 = np.atleast_2d(X[0])
+    x1 = np.atleast_2d(X[1])
+
+    g = sgp.SparseGaussianProcess(x0, k0, h, sigma)
+    g.update(x1, k1)
+    ridx = np.arange(2, len(X))
+
+    return g, ridx
+
+
+def add_training_datum(g, X, y, idx):
+    knew = fitk_spincom(X, y, idx)
+    xnew = np.atleast_2d(X[idx])
+    g.update(xnew, knew)
+
+
+def generalizek_spincom(X, y, m, r, h, sigma):
+    g, ridx = initialize_k_generalization(X, y, h, sigma)
+    for _ in range(2, m):
+        add_most_novel_training_datum(g, X, y, ridx, r)
+    return g
+
+
 
 def knnClassificationTrainTest(X, y, Xtest, ytest, ki):
     ytest = ytest.squeeze()
@@ -214,6 +226,48 @@ def real_data_trial_spincom(data_partition, sigma, m, r, h):
 ###############################################################################
 ## Regression
 ###############################################################################
+
+def generalizek_spincom(X, y, m, r, h, sigma):
+    g, ridx = initialize_k_generalization(X, y, h, sigma)
+    for _ in range(2, m):
+        add_most_novel_training_datum(g, X, y, ridx, r)
+    return g
+
+
+def calculate_neighbor_errors(ysorted, y0):
+    ysum = np.cumsum(ysorted)
+    ybar = ysum / np.arange(1, len(ysorted) + 1)
+    e = ybar - y0
+    return e
+
+
+def fitk_spincom(X, y, idx):
+    y0 = y[idx]
+    Xsorted, ysorted = get_neighborhood(X, y, idx)
+    e = calculate_neighbor_errors(ysorted, y0)
+    k = np.argmin(np.abs(e)) + 1
+
+    return k
+
+
+def initialize_k_generalization(X, y, h, sigma):
+    k0 = fitk_spincom(X, y, 0)
+    k1 = fitk_spincom(X, y, 1)
+
+    x0 = np.atleast_2d(X[0])
+    x1 = np.atleast_2d(X[1])
+
+    g = sgp.SparseGaussianProcess(x0, k0, h, sigma)
+    g.update(x1, k1)
+    ridx = np.arange(2, len(X))
+
+    return g, ridx
+
+
+def add_training_datum(g, X, y, idx):
+    knew = fitk_spincom(X, y, idx)
+    xnew = np.atleast_2d(X[idx])
+    g.update(xnew, knew)
 
 
 
