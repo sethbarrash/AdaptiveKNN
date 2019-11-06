@@ -75,7 +75,7 @@ class SAKNeighborsRegressor(SAKNeighborsBase):
         for i in range(len(X)):
             xi = np.atleast_2d(X[i])
             ku = self.sogp.predict(xi)
-            self.quantize(ku)
+            ku = self.quantize(ku)
             knr = KNeighborsRegressor(n_neighbors = ku)
             knr.fit(self._fit_X, self._fit_y)
             yhat[i] = knr.predict(xi)[0]
@@ -111,7 +111,7 @@ class SAKNeighborsClassifier(SAKNeighborsBase):
         for i in range(len(X)):
             xi = np.atleast_2d(X[i])
             ku = self.sogp.predict(xi)
-            self.quantize(ku)
+            ku = self.quantize(ku)
             knr = KNeighborsClassifier(n_neighbors = ku)
             knr.fit(self._fit_X, self._fit_y)
             yhat[i] = knr.predict(xi)[0]
