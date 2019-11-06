@@ -15,8 +15,8 @@ class SAKNeighborsBase:
     def fit(self, X, y):
         self._fit_X = X
         self._fit_y = y
-        self.sogp = SparseGaussianProcess(X[0], y[0], self.h, self.sigma)
-        self.sogp.update(X[1], y[1])
+        self.sogp = SparseGaussianProcess(X[0], np.atleast_2d(y[0]), self.h, self.sigma)
+        self.sogp.update(X[1], np.atleast_2d(y[1]))
         self.selector = SparseGaussianProcessDataSelector(self.sogp)
 
     def _get_neighbor_order(self, idx):
