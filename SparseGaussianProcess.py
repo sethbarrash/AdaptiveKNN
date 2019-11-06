@@ -78,6 +78,7 @@ class SparseGaussianProcess:
         self._Q = Qnew
 
     def update(self, x, y):
+        # Expects x to be 2d
         self._update_C_alpha(x, y)
         self._update_KB(x)
         self._update_Q(x)
