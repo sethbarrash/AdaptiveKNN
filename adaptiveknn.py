@@ -100,10 +100,9 @@ def fitk_spincom_classification(X, y, idx):
     return k
 
 
-## Fix this one
-def initialize_k_generalization(X, y, h, sigma):
-    k0 = fitk_spincom(X, y, 0)
-    k1 = fitk_spincom(X, y, 1)
+def initialize_k_generalization_classification(X, y, h, sigma):
+    k0 = fitk_spincom_classification(X, y, 0)
+    k1 = fitk_spincom_classification(X, y, 1)
 
     x0 = np.atleast_2d(X[0])
     x1 = np.atleast_2d(X[1])
@@ -115,14 +114,14 @@ def initialize_k_generalization(X, y, h, sigma):
     return g, ridx
 
 
-def add_training_datum(g, X, y, idx):
-    knew = fitk_spincom(X, y, idx)
+def add_training_datum_classification(g, X, y, idx):
+    knew = fitk_spincom_classification(X, y, idx)
     xnew = np.atleast_2d(X[idx])
     g.update(xnew, knew)
 
 
-def generalizek_spincom(X, y, m, r, h, sigma):
-    g, ridx = initialize_k_generalization(X, y, h, sigma)
+def generalizek_spincom_classification(X, y, m, r, h, sigma):
+    g, ridx = initialize_k_generalization_classification(X, y, h, sigma)
     for _ in range(2, m):
         add_most_novel_training_datum(g, X, y, ridx, r)
     return g
@@ -138,9 +137,9 @@ def knnClassificationTrainTest(X, y, Xtest, ytest, ki):
     ## If this receives multiple one-dimensional testing data, it will 
     ## misinterpret them as a single, multi-dimensional datum
     yhat = knr.predict( np.atleast_2d(Xtest) )
-    errors = yhat.squeeze() - ytest
+    errors = yhat.squeeze() != ytest
     t2 = datetime.now()
-    normalized_errors = errors / np.sum(ytest ** 2)
+    normalized_errors = np.nan
 
     trainTime = (t1 - t0).total_seconds()
     testTime  = (t2 - t1).total_seconds()
@@ -152,7 +151,7 @@ def SAkNNClassificationTrainTest(X, y, Xtest, ytest, hyperparams):
     t0 = datetime.now()
 
     m, r, h, sigma = hyperparams.values()
-    g = generalizek_spincom(X, y, m, r, h, sigma)
+    g = generalizek_spincom_classification(X, y, m, r, h, sigma)
 
     t1 = datetime.now()
 
@@ -182,31 +181,31 @@ def SAkNNClassificationTrainTest(X, y, Xtest, ytest, hyperparams):
     return errors, normalized_errors, ktest, trainTime, testTime
 
 
-def optimize_sigma(Xtrain, ytrain, Xvalid, yvalid, sigmas, m, r, h):
-    spincom_validation = pd.DataFrame({"error" : np.nan}, sigmas)
-    for sigma in sigmas:
-        hyperparams = {
-            "m"     : m,
-            "r"     : r,
-            "h"     : h,
-            "sigma" : sigma,
-        }
-        errors = spincomTrainTest(Xtrain, ytrain, Xvalid, yvalid, hyperparams)[0]
-        spincom_validation["error"][sigma] = np.mean( errors ** 2 )
-    sigmabest = spincom_validation["error"].idxmin()
+# def optimize_sigma(Xtrain, ytrain, Xvalid, yvalid, sigmas, m, r, h):
+#     spincom_validation = pd.DataFrame({"error" : np.nan}, sigmas)
+#     for sigma in sigmas:
+#         hyperparams = {
+#             "m"     : m,
+#             "r"     : r,
+#             "h"     : h,
+#             "sigma" : sigma,
+#         }
+#         errors = spincomTrainTest(Xtrain, ytrain, Xvalid, yvalid, hyperparams)[0]
+#         spincom_validation["error"][sigma] = np.mean( errors ** 2 )
+#     sigmabest = spincom_validation["error"].idxmin()
 
-    return sigmabest, spincom_validation
+#     return sigmabest, spincom_validation
 
 
-def real_data_trial_spincom(data_partition, sigma, m, r, h):
+def real_data_trial_spincom_classification(data_partition, sigma, m, r, h):
     dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
     X = np.vstack((Xtrain, Xvalid))
     y = np.append(ytrain, yvalid)
 
     hyperparams = {"m" : m, "r" : r, "h" : h, "sigma" : sigma}
-    errors, normalized_errors, ktest, trainTime, testTime = spincomTrainTest(X, y, Xtest, ytest, hyperparams)
+    errors, normalized_errors, ktest, trainTime, testTime = SAkNNClassificationTrainTest(X, y, Xtest, ytest, hyperparams)
     error = np.mean(errors ** 2)
-    normalized_error = np.mean(normalized_errors ** 2)
+    normalized_error = np.nan
 
     new_row = pd.Series({
         "dataset" : dataset,
