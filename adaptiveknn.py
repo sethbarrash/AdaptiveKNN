@@ -4,7 +4,7 @@ import SparseGaussianProcess as sgp
 
 from datetime import datetime
 from itertools import product
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 
 
 def get_neighbor_order(X, y, idx):
@@ -112,6 +112,130 @@ def atleast_2d_T(X):
         return np.atleast_2d(X)
 
 
+
+###############################################################################
+## Classification
+###############################################################################
+
+def knnClassificationTrainTest(X, y, Xtest, ytest, ki):
+    ytest = ytest.squeeze()
+    knr  = KNeighborsClassifier(n_neighbors = ki, algorithm = "brute")
+    t0 = datetime.now()
+    knr.fit(X, y)
+    t1 = datetime.now()
+    ## If this receives multiple one-dimensional testing data, it will 
+    ## misinterpret them as a single, multi-dimensional datum
+    yhat = knr.predict( np.atleast_2d(Xtest) )
+    errors = yhat.squeeze() - ytest
+    t2 = datetime.now()
+    normalized_errors = errors / np.sum(ytest ** 2)
+
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return errors, normalized_errors, trainTime, testTime
+
+
+def SAkNNClassificationTrainTest(X, y, Xtest, ytest, hyperparams):
+    t0 = datetime.now()
+
+    m, r, h, sigma = hyperparams.values()
+    g = generalizek_spincom(X, y, m, r, h, sigma)
+
+    t1 = datetime.now()
+
+    n = len(X)
+    X = atleast_2d_T(X)
+
+    ktest  = np.zeros_like(ytest, dtype = int)
+    errors = np.zeros_like(ytest)
+    for i in range(len(ytest)):
+        xi = np.atleast_2d(Xtest[i])
+        ki = g.predict(xi)
+        ki = quantize_k(ki, n)
+        ktest[i] = ki
+
+        error = knnClassificationTrainTest(X, y, xi, ytest[i], ki)
+        try:
+            errors[i] = error[0]
+        except(IndexError):
+            errors[i] = error
+
+    t2 = datetime.now()
+    normalized_errors = errors / np.sum(ytest ** 2)
+
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return errors, normalized_errors, ktest, trainTime, testTime
+
+
+def optimize_sigma(Xtrain, ytrain, Xvalid, yvalid, sigmas, m, r, h):
+    spincom_validation = pd.DataFrame({"error" : np.nan}, sigmas)
+    for sigma in sigmas:
+        hyperparams = {
+            "m"     : m,
+            "r"     : r,
+            "h"     : h,
+            "sigma" : sigma,
+        }
+        errors = spincomTrainTest(Xtrain, ytrain, Xvalid, yvalid, hyperparams)[0]
+        spincom_validation["error"][sigma] = np.mean( errors ** 2 )
+    sigmabest = spincom_validation["error"].idxmin()
+
+    return sigmabest, spincom_validation
+
+
+def real_data_trial_spincom(data_partition, sigma, m, r, h):
+    dataset, Xtrain, Xvalid, Xtest, ytrain, yvalid, ytest = data_partition
+    X = np.vstack((Xtrain, Xvalid))
+    y = np.append(ytrain, yvalid)
+
+    hyperparams = {"m" : m, "r" : r, "h" : h, "sigma" : sigma}
+    errors, normalized_errors, ktest, trainTime, testTime = spincomTrainTest(X, y, Xtest, ytest, hyperparams)
+    error = np.mean(errors ** 2)
+    normalized_error = np.mean(normalized_errors ** 2)
+
+    new_row = pd.Series({
+        "dataset" : dataset,
+        "sigma"   : sigma,
+        "m"       : m,
+        "r"       : r,
+        "h"       : h,
+        "mse"     : error,
+        "nmse"    : normalized_error,
+        "trainTime" : trainTime,
+        "testTime"  : testTime,
+    })
+    return new_row
+
+
+
+###############################################################################
+## Regression
+###############################################################################
+
+
+
+def knnTrainTest(X, y, Xtest, ytest, ki):
+    ytest = ytest.squeeze()
+    knr  = KNeighborsRegressor(n_neighbors = ki, algorithm = "brute")
+    t0 = datetime.now()
+    knr.fit(X, y)
+    t1 = datetime.now()
+    ## If this receives multiple one-dimensional testing data, it will 
+    ## misinterpret them as a single, multi-dimensional datum
+    yhat = knr.predict( np.atleast_2d(Xtest) )
+    errors = yhat.squeeze() - ytest
+    t2 = datetime.now()
+    normalized_errors = errors / np.sum(ytest ** 2)
+
+    trainTime = (t1 - t0).total_seconds()
+    testTime  = (t2 - t1).total_seconds()
+
+    return errors, normalized_errors, trainTime, testTime
+
+
 def spincomTrainTest(X, y, Xtest, ytest, hyperparams):
     t0 = datetime.now()
 
@@ -197,12 +321,9 @@ def real_data_trial_spincom(data_partition, sigma, m, r, h):
 
 
 
-
-
-
-
-
-
+###############################################################################
+## Other authors' algorithms
+###############################################################################
 
 
 from sklearn.neural_network import MLPRegressor
@@ -248,23 +369,6 @@ def choose_k_from_random_subset(Krand, ysorted, y0):
 ## Train/test
 ###############################################################################
 
-def knnTrainTest(X, y, Xtest, ytest, ki):
-    ytest = ytest.squeeze()
-    knr  = KNeighborsRegressor(n_neighbors = ki, algorithm = "brute")
-    t0 = datetime.now()
-    knr.fit(X, y)
-    t1 = datetime.now()
-    ## If this receives multiple one-dimensional testing data, it will 
-    ## misinterpret them as a single, multi-dimensional datum
-    yhat = knr.predict( np.atleast_2d(Xtest) )
-    errors = yhat.squeeze() - ytest
-    t2 = datetime.now()
-    normalized_errors = errors / np.sum(ytest ** 2)
-
-    trainTime = (t1 - t0).total_seconds()
-    testTime  = (t2 - t1).total_seconds()
-
-    return errors, normalized_errors, trainTime, testTime
 
 
 
